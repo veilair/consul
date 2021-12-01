@@ -84,18 +84,17 @@ func TestConsulCAProvider_Bootstrap(t *testing.T) {
 
 	provider := TestConsulProvider(t, delegate)
 	require.NoError(provider.Configure(testProviderConfig(conf)))
-	require.NoError(provider.GenerateRoot())
 
-	root, err := provider.ActiveRoot()
+	root, err := provider.GenerateRoot()
 	require.NoError(err)
 
 	// Intermediate should be the same cert.
 	inter, err := provider.ActiveIntermediate()
 	require.NoError(err)
-	require.Equal(root, inter)
+	require.Equal(root.PEM, inter)
 
 	// Should be a valid cert
-	parsed, err := connect.ParseCert(root)
+	parsed, err := connect.ParseCert(root.PEM)
 	require.NoError(err)
 	require.Equal(parsed.URIs[0].String(), fmt.Sprintf("spiffe://%s.consul", conf.ClusterID))
 	requireNotEncoded(t, parsed.SubjectKeyId)
@@ -125,14 +124,13 @@ func TestConsulCAProvider_Bootstrap_WithCert(t *testing.T) {
 
 	provider := TestConsulProvider(t, delegate)
 	require.NoError(provider.Configure(testProviderConfig(conf)))
-	require.NoError(provider.GenerateRoot())
 
-	root, err := provider.ActiveRoot()
+	root, err := provider.GenerateRoot()
 	require.NoError(err)
-	require.Equal(root, rootCA.RootCert)
+	require.Equal(root.PEM, rootCA.RootCert)
 
 	// Should be a valid cert
-	parsed, err := connect.ParseCert(root)
+	parsed, err := connect.ParseCert(root.PEM)
 	require.NoError(err)
 
 	// test that the default root cert ttl was not applied to the provided cert
@@ -163,7 +161,8 @@ func TestConsulCAProvider_SignLeaf(t *testing.T) {
 
 			provider := TestConsulProvider(t, delegate)
 			require.NoError(provider.Configure(testProviderConfig(conf)))
-			require.NoError(provider.GenerateRoot())
+			_, err := provider.GenerateRoot()
+			require.NoError(err)
 
 			spiffeService := &connect.SpiffeIDService{
 				Host:       connect.TestClusterID + ".consul",
@@ -276,7 +275,8 @@ func TestConsulCAProvider_CrossSignCA(t *testing.T) {
 			conf1.Config["PrivateKeyType"] = tc.SigningKeyType
 			conf1.Config["PrivateKeyBits"] = tc.SigningKeyBits
 			require.NoError(provider1.Configure(testProviderConfig(conf1)))
-			require.NoError(provider1.GenerateRoot())
+			_, err := provider1.GenerateRoot()
+			require.NoError(err)
 
 			conf2 := testConsulCAConfig()
 			conf2.CreateIndex = 10
@@ -285,7 +285,8 @@ func TestConsulCAProvider_CrossSignCA(t *testing.T) {
 			conf2.Config["PrivateKeyType"] = tc.CSRKeyType
 			conf2.Config["PrivateKeyBits"] = tc.CSRKeyBits
 			require.NoError(provider2.Configure(testProviderConfig(conf2)))
-			require.NoError(provider2.GenerateRoot())
+			_, err = provider2.GenerateRoot()
+			require.NoError(err)
 
 			testCrossSignProviders(t, provider1, provider2)
 		})
@@ -296,9 +297,10 @@ func testCrossSignProviders(t *testing.T, provider1, provider2 Provider) {
 	require := require.New(t)
 
 	// Get the root from the new provider to be cross-signed.
-	newRootPEM, err := provider2.ActiveRoot()
+	root, err := provider2.GenerateRoot()
 	require.NoError(err)
-	newRoot, err := connect.ParseCert(newRootPEM)
+
+	newRoot, err := connect.ParseCert(root.PEM)
 	require.NoError(err)
 	oldSubject := newRoot.Subject.CommonName
 	requireNotEncoded(t, newRoot.SubjectKeyId)
@@ -319,9 +321,9 @@ func testCrossSignProviders(t *testing.T, provider1, provider2 Provider) {
 	requireNotEncoded(t, xc.SubjectKeyId)
 	requireNotEncoded(t, xc.AuthorityKeyId)
 
-	oldRootPEM, err := provider1.ActiveRoot()
+	p1Root, err := provider1.GenerateRoot()
 	require.NoError(err)
-	oldRoot, err := connect.ParseCert(oldRootPEM)
+	oldRoot, err := connect.ParseCert(p1Root.PEM)
 	require.NoError(err)
 	requireNotEncoded(t, oldRoot.SubjectKeyId)
 	requireNotEncoded(t, oldRoot.AuthorityKeyId)
@@ -398,7 +400,8 @@ func TestConsulProvider_SignIntermediate(t *testing.T) {
 			conf1.Config["PrivateKeyType"] = tc.SigningKeyType
 			conf1.Config["PrivateKeyBits"] = tc.SigningKeyBits
 			require.NoError(provider1.Configure(testProviderConfig(conf1)))
-			require.NoError(provider1.GenerateRoot())
+			_, err := provider1.GenerateRoot()
+			require.NoError(err)
 
 			conf2 := testConsulCAConfig()
 			conf2.CreateIndex = 10
@@ -429,8 +432,9 @@ func testSignIntermediateCrossDC(t *testing.T, provider1, provider2 Provider) {
 	// Sign the CSR with provider1.
 	intermediatePEM, err := provider1.SignIntermediate(csr)
 	require.NoError(err)
-	rootPEM, err := provider1.ActiveRoot()
+	root, err := provider1.GenerateRoot()
 	require.NoError(err)
+	rootPEM := root.PEM
 
 	// Give the new intermediate to provider2 to use.
 	require.NoError(provider2.SetIntermediate(intermediatePEM, rootPEM))
@@ -503,7 +507,8 @@ func TestConsulCAProvider_MigrateOldID(t *testing.T) {
 
 			provider := TestConsulProvider(t, delegate)
 			require.NoError(t, provider.Configure(testProviderConfig(conf)))
-			require.NoError(t, provider.GenerateRoot())
+			_, err = provider.GenerateRoot()
+			require.NoError(t, err)
 
 			// After running Configure, the old ID entry should be gone.
 			_, providerState, err = delegate.state.CAProviderState(tc.oldID)
