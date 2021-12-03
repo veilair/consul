@@ -50,6 +50,7 @@ func ParseLeafCerts(pemValue string) (*x509.Certificate, *x509.CertPool, error) 
 		if !cert.IsCA {
 			return nil, nil, fmt.Errorf("found an unexpected leaf cert after the first PEM-block")
 		}
+		fmt.Println("adding intermediate cert", HexString(cert.SubjectKeyId), cert.Subject)
 		intermediates.AddCert(cert)
 	}
 
@@ -90,20 +91,10 @@ func parseCerts(pemValue string) ([]*x509.Certificate, error) {
 	return out, nil
 }
 
-// CalculateCertFingerprint parses the x509 certificate from a PEM-encoded value
-// and calculates the SHA-1 fingerprint.
-func CalculateCertFingerprint(pemValue string) (string, error) {
-	// The _ result below is not an error but the remaining PEM bytes.
-	block, _ := pem.Decode([]byte(pemValue))
-	if block == nil {
-		return "", fmt.Errorf("no PEM-encoded data found")
-	}
-
-	if block.Type != "CERTIFICATE" {
-		return "", fmt.Errorf("first PEM-block should be CERTIFICATE type")
-	}
-
-	hash := sha1.Sum(block.Bytes)
+// CalculateCertFingerprint parses the x509 certificate and calculates the
+// SHA-1 fingerprint.
+func CalculateCertFingerprint(cert []byte) (string, error) {
+	hash := sha1.Sum(cert)
 	return HexString(hash[:]), nil
 }
 

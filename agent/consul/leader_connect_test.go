@@ -1252,7 +1252,7 @@ func TestConnectCA_ConfigurationSet_PersistsRoots(t *testing.T) {
 	})
 }
 
-func TestParseCARoot(t *testing.T) {
+func TestNewCARoot(t *testing.T) {
 	type test struct {
 		name             string
 		pem              string
@@ -1311,7 +1311,7 @@ func TestParseCARoot(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			root, err := parseCARoot(tt.pem, "consul", "cluster")
+			root, err := newCARoot(tt.pem, "consul", "cluster")
 			if tt.wantErr {
 				require.Error(err)
 				return

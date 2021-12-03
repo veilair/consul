@@ -626,7 +626,7 @@ func getLeafCert(t *testing.T, codec rpc.ClientCodec, trustDomain string, dc str
 	return cert.CertPEM
 }
 
-func TestCAManager_Initialize_Vault_WithIntermediateAsPrimaryCA(t *testing.T) {
+func TestCAManager_Initialize_Vault_WithExternalTrustedCA(t *testing.T) {
 	if testing.Short() {
 		t.Skip("too slow for testing.Short")
 	}
@@ -636,8 +636,8 @@ func TestCAManager_Initialize_Vault_WithIntermediateAsPrimaryCA(t *testing.T) {
 	vclient := vault.Client()
 	rootPEM := generateExternalRootCA(t, vclient)
 
-	meshRootPath := "pki-root"
-	setupMeshRootCA(t, vclient, meshRootPath, rootPEM)
+	primaryCAPath := "pki-primary"
+	setupPrimaryCA(t, vclient, primaryCAPath, rootPEM)
 
 	_, s1 := testServerWithConfig(t, func(c *Config) {
 		c.CAConfig = &structs.CAConfiguration{
@@ -645,7 +645,7 @@ func TestCAManager_Initialize_Vault_WithIntermediateAsPrimaryCA(t *testing.T) {
 			Config: map[string]interface{}{
 				"Address":             vault.Addr,
 				"Token":               vault.RootToken,
-				"RootPKIPath":         meshRootPath,
+				"RootPKIPath":         primaryCAPath,
 				"IntermediatePKIPath": "pki-intermediate/",
 				// TODO: there are failures to init the CA system if these are not set
 				// to the values of the already initialized CA.
@@ -654,16 +654,16 @@ func TestCAManager_Initialize_Vault_WithIntermediateAsPrimaryCA(t *testing.T) {
 			},
 		}
 	})
-	defer s1.Shutdown()
 	testrpc.WaitForTestAgent(t, s1.RPC, "dc1")
 
 	codec := rpcClient(t, s1)
-	defer codec.Close()
-
 	roots := structs.IndexedCARoots{}
 	err := msgpackrpc.CallWithCodec(codec, "ConnectCA.Roots", &structs.DCSpecificRequest{}, &roots)
 	require.NoError(t, err)
 	require.Len(t, roots.Roots, 1)
+	require.Equal(t, rootPEM, roots.Roots[0].RootCert)
+	require.Len(t, roots.Roots[0].IntermediateCerts, 2)
+	t.Log(roots.Roots[0].IntermediateCerts)
 
 	leafCert := getLeafCert(t, codec, roots.TrustDomain, "dc1")
 	verifyLeafCert(t, roots.Active(), leafCert)
@@ -686,10 +686,10 @@ func generateExternalRootCA(t *testing.T, client *vaultapi.Client) string {
 		"ttl":         "2400h",
 	})
 	require.NoError(t, err, "failed to generate root")
-	return resp.Data["certificate"].(string)
+	return ca.EnsureTrailingNewline(resp.Data["certificate"].(string))
 }
 
-func setupMeshRootCA(t *testing.T, client *vaultapi.Client, path string, rootPEM string) {
+func setupPrimaryCA(t *testing.T, client *vaultapi.Client, path string, rootPEM string) {
 	t.Helper()
 	err := client.Sys().Mount(path, &vaultapi.MountInput{
 		Type:        "pki",
