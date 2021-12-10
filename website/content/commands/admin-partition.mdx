@@ -20,11 +20,7 @@ You should only run the `partition` command in the primary datacenter.
 ## Usage
 
 ```shell-session
-<<<<<<< HEAD
-consul admin-partition <SUBCOMMAND> <OPTIONS> 
-=======
 consul partition <SUBCOMMAND> <OPTIONS>
->>>>>>> 7efe3d8c77... Rename partition CLI command
 ```
 
 Issue the `consul partition -h` command to view the subcommands.
@@ -65,22 +61,14 @@ Usage: consul partition <subcommand> [options] [args]
 
 ## Subcommands
 
-<<<<<<< HEAD
-You can issue the folloing subcommands with the `consul admin-partition` command.
-=======
 You can issue the following subcommands with the `consul partition` command.
->>>>>>> 7efe3d8c77... Rename partition CLI command
 
 ### `create`
 
 The `create` subcommand sends a request to the server to create a new admin partition. 
 
 ```shell-session
-<<<<<<< HEAD
-consul admin-partition create <OPTIONS> 
-=======
 consul partition create <OPTIONS>
->>>>>>> 7efe3d8c77... Rename partition CLI command
 ```
 
 The admin partition is created according to the values specified in the options. You can specify the following options:
@@ -133,11 +121,7 @@ You can specify the following options:
 In the following example, the `webdev-bu` partition is written using `stdin` values:
 
 ```shell-session
-<<<<<<< HEAD
-consul admin-partition write -format  json -show-meta - <<< 'name = "webdev-bu" description = "backup webdev partition"' 
-=======
 consul partition write -format  json -show-meta - <<< 'name = "webdev-bu" description = "backup webdev partition"'
->>>>>>> 7efe3d8c77... Rename partition CLI command
 
 {
    "Name": "webdev-bu",
@@ -179,11 +163,7 @@ consul partition read -format json -meta webdev
 The `list` subcommand prints existing admin partitions to the console. 
 
 ```shell-session
-<<<<<<< HEAD
-consul admin-partition list <OPTIONS> 
-=======
 consul partition list <OPTIONS>
->>>>>>> 7efe3d8c77... Rename partition CLI command
 ```
 
 The admin partition is created according to the values specified in the options. You can specify the following options:
@@ -254,11 +234,7 @@ Description = "Partition for dev team"
 
 ## HTTP API Options
 
-<<<<<<< HEAD
-You can include the following options to interact with the HTTP API when using the `admin-partition` command. 
-=======
 You can include the following options to interact with the HTTP API when using the `partition` command.
->>>>>>> 7efe3d8c77... Rename partition CLI command
 
 | Option | Description | Default | Required |
 | ---    | ---         | ---     | ---      |
