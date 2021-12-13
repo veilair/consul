@@ -1,8 +1,19 @@
 {{#if (can "use nspaces")}}
-    {{#if (can "choose nspaces")}}
-{{#let
-  (or @nspace 'default')
-as |nspace|}}
+  {{#let
+    (or @nspace 'default')
+  as |nspace|}}
+    <DataSource
+      @src={{uri
+      '/${partition}/*/${dc}/namespaces'
+        (hash
+          partition=@partition
+          dc=@dc.Name
+        )
+      }}
+      @onchange={{fn (optional @onchange)}}
+    />
+    {{#if (can 'see nspaces' items=@nspaces)}}
+{{#if (can "choose nspaces")}}
           <li
             class="nspaces"
             data-test-nspace-menu
@@ -68,7 +79,8 @@ as |nspace|}}
                 </BlockSlot>
               </PopoverMenu>
           </li>
-{{/let}}
+{{/if}}
     {{/if}}
-  {{/if}}
+  {{/let}}
+{{/if}}
 
