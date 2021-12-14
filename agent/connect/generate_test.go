@@ -8,8 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
-	"github.com/hashicorp/consul/agent/structs"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hashicorp/consul/agent/structs"
 )
 
 type KeyConfig struct {

@@ -76,14 +76,14 @@ func TestCerts(t testing.T) (*structs.IndexedCARoots, *structs.IssuedCert) {
 	roots := &structs.IndexedCARoots{
 		ActiveRootID: ca.ID,
 		TrustDomain:  fmt.Sprintf("%s.consul", connect.TestClusterID),
-		Roots:        []*structs.CARoot{ca},
+		Roots:        []*structs.CARoot{&ca.CARoot},
 	}
 	return roots, TestLeafForCA(t, ca)
 }
 
 // TestLeafForCA generates new Leaf suitable for returning as mock CA
 // leaf cache response, signed by an existing CA.
-func TestLeafForCA(t testing.T, ca *structs.CARoot) *structs.IssuedCert {
+func TestLeafForCA(t testing.T, ca *connect.CARootWithSigningKey) *structs.IssuedCert {
 	leafPEM, pkPEM := connect.TestLeaf(t, "web", ca)
 
 	leafCert, err := connect.ParseCert(leafPEM)

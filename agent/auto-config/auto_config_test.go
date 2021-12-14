@@ -905,7 +905,7 @@ func TestRootsUpdate(t *testing.T) {
 		ActiveRootID: secondCA.ID,
 		TrustDomain:  connect.TestClusterID,
 		Roots: []*structs.CARoot{
-			secondCA,
+			&secondCA.CARoot,
 			testAC.initialRoots.Roots[0],
 		},
 		QueryMeta: structs.QueryMeta{

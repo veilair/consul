@@ -5734,12 +5734,6 @@ func TestAgentConnectCARoots_list(t *testing.T) {
 	assert.NotEmpty(value.TrustDomain)
 	assert.Len(value.Roots, 2)
 
-	// We should never have the secret information
-	for _, r := range value.Roots {
-		assert.Equal("", r.SigningCert)
-		assert.Equal("", r.SigningKey)
-	}
-
 	assert.Equal("MISS", resp.Header().Get("X-Cache"))
 
 	// Test caching

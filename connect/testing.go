@@ -33,13 +33,14 @@ func TestService(t testing.T, service string, ca *structs.CARoot) *Service {
 }
 
 // TestTLSConfig returns a *tls.Config suitable for use during tests.
-func TestTLSConfig(t testing.T, service string, ca *structs.CARoot) *tls.Config {
+func TestTLSConfig(t testing.T, service string, ca *connect.CARootWithSigningKey) *tls.Config {
 	t.Helper()
 
+	root := &ca.CARoot
 	cfg := defaultTLSConfig()
-	cfg.Certificates = []tls.Certificate{TestSvcKeyPair(t, service, ca)}
-	cfg.RootCAs = TestCAPool(t, ca)
-	cfg.ClientCAs = TestCAPool(t, ca)
+	cfg.Certificates = []tls.Certificate{TestSvcKeyPair(t, service, root)}
+	cfg.RootCAs = TestCAPool(t, root)
+	cfg.ClientCAs = TestCAPool(t, root)
 	return cfg
 }
 

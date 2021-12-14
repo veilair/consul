@@ -71,11 +71,7 @@ func TestConnectCARoots(t *testing.T) {
 	// Verify
 	assert.Equal(ca1.ID, reply.ActiveRootID)
 	assert.Len(reply.Roots, 2)
-	for _, r := range reply.Roots {
-		// These must never be set, for security
-		assert.Equal("", r.SigningCert)
-		assert.Equal("", r.SigningKey)
-	}
+	// TODO: more strict assertions about the response data
 	assert.Equal(fmt.Sprintf("%s.consul", caCfg.ClusterID), reply.TrustDomain)
 }
 
@@ -342,7 +338,6 @@ func TestConnectCAConfig_GetSetForceNoCrossSigning(t *testing.T) {
 				require.False(r.Active)
 				require.Equal(r.Name, oldRoot.Name)
 				require.Equal(r.RootCert, oldRoot.RootCert)
-				require.Equal(r.SigningCert, oldRoot.SigningCert)
 				require.Equal(r.IntermediateCerts, oldRoot.IntermediateCerts)
 			} else {
 				// The new root should NOT have a valid cross-signed cert from the old
@@ -460,7 +455,6 @@ func TestConnectCAConfig_TriggerRotation(t *testing.T) {
 						assert.False(t, r.Active)
 						assert.Equal(t, r.Name, oldRoot.Name)
 						assert.Equal(t, r.RootCert, oldRoot.RootCert)
-						assert.Equal(t, r.SigningCert, oldRoot.SigningCert)
 						assert.Equal(t, r.IntermediateCerts, oldRoot.IntermediateCerts)
 					} else {
 						newRootPEM = r.RootCert

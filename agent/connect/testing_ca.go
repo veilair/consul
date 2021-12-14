@@ -57,8 +57,8 @@ func ValidateLeaf(caPEM string, leafPEM string, intermediatePEMs []string) error
 	return err
 }
 
-func testCA(t testing.T, xc *structs.CARoot, keyType string, keyBits int, ttl time.Duration) *structs.CARoot {
-	var result structs.CARoot
+func testCA(t testing.T, xc *CARootWithSigningKey, keyType string, keyBits int, ttl time.Duration) *CARootWithSigningKey {
+	var result CARootWithSigningKey
 	result.Active = true
 	result.Name = fmt.Sprintf("Test CA %d", atomic.AddUint64(&testCACounter, 1))
 
@@ -161,30 +161,35 @@ func testCA(t testing.T, xc *structs.CARoot, keyType string, keyBits int, ttl ti
 	return &result
 }
 
+type CARootWithSigningKey struct {
+	structs.CARoot
+	SigningCert string
+	SigningKey  string
+}
+
 // TestCA creates a test CA certificate and signing key and returns it
 // in the CARoot structure format. The returned CA will be set as Active = true.
 //
 // If xc is non-nil, then the returned certificate will have a signing cert
 // that is cross-signed with the previous cert, and this will be set as
 // SigningCert.
-func TestCA(t testing.T, xc *structs.CARoot) *structs.CARoot {
+func TestCA(t testing.T, xc *CARootWithSigningKey) *CARootWithSigningKey {
 	return testCA(t, xc, DefaultPrivateKeyType, DefaultPrivateKeyBits, 0)
 }
 
 // TestCAWithTTL is similar to TestCA, except that it
 // takes a custom duration for the lifetime of the certificate.
-func TestCAWithTTL(t testing.T, xc *structs.CARoot, ttl time.Duration) *structs.CARoot {
+func TestCAWithTTL(t testing.T, xc *CARootWithSigningKey, ttl time.Duration) *CARootWithSigningKey {
 	return testCA(t, xc, DefaultPrivateKeyType, DefaultPrivateKeyBits, ttl)
 }
 
 // TestCAWithKeyType is similar to TestCA, except that it
 // takes two additional arguments to override the default private key type and size.
-func TestCAWithKeyType(t testing.T, xc *structs.CARoot, keyType string, keyBits int) *structs.CARoot {
+func TestCAWithKeyType(t testing.T, xc *CARootWithSigningKey, keyType string, keyBits int) *CARootWithSigningKey {
 	return testCA(t, xc, keyType, keyBits, 0)
 }
 
-func testLeafWithID(t testing.T, spiffeId CertURI, root *structs.CARoot, keyType string, keyBits int, expiration time.Duration) (string, string, error) {
-
+func testLeafWithID(t testing.T, spiffeId CertURI, root *CARootWithSigningKey, keyType string, keyBits int, expiration time.Duration) (string, string, error) {
 	if expiration == 0 {
 		// this is 10 years
 		expiration = 10 * 365 * 24 * time.Hour
@@ -255,7 +260,7 @@ func testLeafWithID(t testing.T, spiffeId CertURI, root *structs.CARoot, keyType
 	return buf.String(), pkPEM, nil
 }
 
-func TestAgentLeaf(t testing.T, node string, datacenter string, root *structs.CARoot, expiration time.Duration) (string, string, error) {
+func TestAgentLeaf(t testing.T, node string, datacenter string, root *CARootWithSigningKey, expiration time.Duration) (string, string, error) {
 	// Build the SPIFFE ID
 	spiffeId := &SpiffeIDAgent{
 		Host:       fmt.Sprintf("%s.consul", TestClusterID),
@@ -266,7 +271,7 @@ func TestAgentLeaf(t testing.T, node string, datacenter string, root *structs.CA
 	return testLeafWithID(t, spiffeId, root, DefaultPrivateKeyType, DefaultPrivateKeyBits, expiration)
 }
 
-func testLeaf(t testing.T, service string, namespace string, root *structs.CARoot, keyType string, keyBits int) (string, string, error) {
+func testLeaf(t testing.T, service string, namespace string, root *CARootWithSigningKey, keyType string, keyBits int) (string, string, error) {
 	// Build the SPIFFE ID
 	spiffeId := &SpiffeIDService{
 		Host:       fmt.Sprintf("%s.consul", TestClusterID),
@@ -280,11 +285,11 @@ func testLeaf(t testing.T, service string, namespace string, root *structs.CARoo
 
 // TestLeaf returns a valid leaf certificate and it's private key for the named
 // service with the given CA Root.
-func TestLeaf(t testing.T, service string, root *structs.CARoot) (string, string) {
+func TestLeaf(t testing.T, service string, root *CARootWithSigningKey) (string, string) {
 	return TestLeafWithNamespace(t, service, "default", root)
 }
 
-func TestLeafWithNamespace(t testing.T, service, namespace string, root *structs.CARoot) (string, string) {
+func TestLeafWithNamespace(t testing.T, service, namespace string, root *CARootWithSigningKey) (string, string) {
 	// Currently we only support EC leaf keys and certs even if the CA is using
 	// RSA. We might allow Leafs to follow the signing CA key type later if we
 	// need to for compatibility sake but this is allowed by TLS 1.2 and works with
@@ -387,11 +392,14 @@ type TestAgentRPC interface {
 }
 
 func testCAConfigSet(t testing.T, a TestAgentRPC,
-	ca *structs.CARoot, keyType string, keyBits int) *structs.CARoot {
+	root *structs.CARoot, keyType string, keyBits int) *CARootWithSigningKey {
 	t.Helper()
 
-	if ca == nil {
-		ca = TestCAWithKeyType(t, nil, keyType, keyBits)
+	ca := &CARootWithSigningKey{}
+	if root == nil {
+		ca.CARoot = TestCAWithKeyType(t, nil, keyType, keyBits).CARoot
+	} else {
+		ca.CARoot = *root
 	}
 	newConfig := &structs.CAConfiguration{
 		Provider: "consul",
@@ -424,13 +432,6 @@ func testCAConfigSet(t testing.T, a TestAgentRPC,
 // can't introduce an import cycle by importing `agent.TestAgent` here directly.
 // It also means this will work in a few other places we mock that method.
 func TestCAConfigSet(t testing.T, a TestAgentRPC,
-	ca *structs.CARoot) *structs.CARoot {
+	ca *structs.CARoot) *CARootWithSigningKey {
 	return testCAConfigSet(t, a, ca, DefaultPrivateKeyType, DefaultPrivateKeyBits)
-}
-
-// TestCAConfigSetWithKeyType is similar to TestCAConfigSet, except that it
-// takes two additional arguments to override the default private key type and size.
-func TestCAConfigSetWithKeyType(t testing.T, a TestAgentRPC,
-	ca *structs.CARoot, keyType string, keyBits int) *structs.CARoot {
-	return testCAConfigSet(t, a, ca, keyType, keyBits)
 }

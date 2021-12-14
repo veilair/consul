@@ -61,12 +61,7 @@ func TestConnectCARoots_list(t *testing.T) {
 	value := obj.(structs.IndexedCARoots)
 	assertion.Equal(value.ActiveRootID, ca2.ID)
 	assertion.Len(value.Roots, 2)
-
-	// We should never have the secret information
-	for _, r := range value.Roots {
-		assertion.Equal("", r.SigningCert)
-		assertion.Equal("", r.SigningKey)
-	}
+	// TODO: more strict assertions about the response data
 }
 
 func TestConnectCAConfig(t *testing.T) {
